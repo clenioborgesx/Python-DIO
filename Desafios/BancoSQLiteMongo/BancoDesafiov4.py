@@ -1,5 +1,30 @@
+import ast
+import sqlite3
+from pymongo import MongoClient
 import textwrap
 import string
+
+# Conexão com o SQLite
+conn = sqlite3.connect('banco.db')
+cursor = conn.cursor()
+
+# Criação da tabela Conta_Banco no SQLite
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Conta_Banco (
+    digito_verificador INTEGER,
+    saldo REAL,
+    extrato TEXT,
+    limite REAL,
+    numero_saques INTEGER,
+    limite_saques INTEGER,
+    usuario TEXT
+)
+""")
+
+# Conexão com o MongoDB
+client = MongoClient("mongodb://localhost:27017/")
+db = client["banco"]
+col = db["transacoes"]
 
 class Conta_Banco:
     def __init__(self, digito_verificador, usuario):
@@ -16,6 +41,8 @@ class Conta_Banco:
             self.saldo += valor
             self.extrato += f"Depósito:\tR$ {valor:.2f}\n"
             print("Depósito realizado com sucesso!")
+            # Adiciona a transação no MongoDB
+            col.insert_one({"tipo": "deposito", "valor": valor, "usuario": self.usuario})
         else:
             print("Operação falhou! O valor informado é inválido.")
 
@@ -35,6 +62,8 @@ class Conta_Banco:
             self.extrato += f"Saque:\t\tR$ {valor:.2f}\n"
             self.numero_saques += 1
             print("Saque realizado com sucesso!")
+            # Adiciona a transação no MongoDB
+            col.insert_one({"tipo": "saque", "valor": valor, "usuario": self.usuario})
         else:
             print("Operação falhou! O valor informado é inválido.")
 
@@ -72,10 +101,60 @@ class Sistema_Banco:
         self.contas.append({"agencia": "0226", "numero_conta": self.numero_conta, "digito_verificador": digito_verificador, "usuario": usuario, "conta": conta_bancaria})
         self.numero_conta += 1
         print("Usuário criado com sucesso!")
+        # Adiciona a conta no SQLite
+        cursor.execute("""
+        INSERT INTO Conta_Banco (digito_verificador, saldo, extrato, limite, numero_saques, limite_saques, usuario) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (digito_verificador, 0, "Não foram realizadas movimentações.\n", 50000, 0, 5, str(usuario)))
+        conn.commit()
 
     def filtrar_usuario(self, cpf):
-        usuarios_filtrados = [usuario for usuario in self.contas if usuario["usuario"]["cpf"] == cpf]
-        return usuarios_filtrados[0] if usuarios_filtrados else None
+        # Busca o usuário no SQLite
+        cursor.execute("""
+        SELECT * FROM Conta_Banco WHERE usuario LIKE ?
+        """, ('%'+cpf+'%',))
+        usuarios_filtrados = cursor.fetchall()
+        if usuarios_filtrados:
+            # Converte a tupla em um dicionário
+            usuario_data = ast.literal_eval(usuarios_filtrados[0][6])  # Converte a string em um dicionário
+            conta = Conta_Banco(usuarios_filtrados[0][0], usuario_data)
+            usuario = {
+                "digito_verificador": usuarios_filtrados[0][0],
+                "saldo": usuarios_filtrados[0][1],
+                "extrato": usuarios_filtrados[0][2],
+                "limite": usuarios_filtrados[0][3],
+                "numero_saques": usuarios_filtrados[0][4],
+                "limite_saques": usuarios_filtrados[0][5],
+                "usuario": usuario_data,
+                "conta": conta
+            }
+            return usuario
+        else:
+            return None
+
+    def filtrar_usuario(self, cpf):
+        # Busca o usuário no SQLite
+        cursor.execute("""
+        SELECT * FROM Conta_Banco WHERE usuario LIKE ?
+        """, ('%'+cpf+'%',))
+        usuarios_filtrados = cursor.fetchall()
+        if usuarios_filtrados:
+            # Converte a tupla em um dicionário
+            usuario_data = ast.literal_eval(usuarios_filtrados[0][6])  # Converte a string em um dicionário
+            conta = Conta_Banco(usuarios_filtrados[0][0], usuario_data)
+            usuario = {
+                "digito_verificador": usuarios_filtrados[0][0],
+                "saldo": usuarios_filtrados[0][1],
+                "extrato": usuarios_filtrados[0][2],
+                "limite": usuarios_filtrados[0][3],
+                "numero_saques": usuarios_filtrados[0][4],
+                "limite_saques": usuarios_filtrados[0][5],
+                "usuario": usuario_data,
+                "conta": conta
+            }
+            return usuario
+        else:
+            return None
 
     def acessar_conta(self):
         cpf = input("Informe o CPF do usuário: ")
@@ -116,6 +195,8 @@ class Sistema_Banco:
                         conta_origem.extrato += f"Transferência para {conta['usuario']['nome']}:\tR$ {valor:.2f}\n"
                         conta['conta'].extrato += f"Transferência de {conta_origem.usuario['nome']}:\tR$ {valor:.2f}\n"
                         print("Transferência realizada com sucesso!")
+                        # Adiciona a transação no MongoDB
+                        col.insert_one({"tipo": "transferencia", "valor": valor, "usuario_origem": conta_origem.usuario, "usuario_destino": conta['usuario']})
                     else:
                         print("Saldo insuficiente para realizar a transferência.")
                 elif confirmacao == 2:
@@ -127,7 +208,16 @@ class Sistema_Banco:
 
 def menu_principal():
     sistema = Sistema_Banco()
+    """
+    nome = 'Clênio Borges Barboza Filho'
+    nascimento = '14/04/1995'
+    cpf = '090.449.264-89'
+    endereco = 'Rua Governador, 295, Franscisco, Garanhuns, Pernambuco, Brasil'
+    primeiro_deposito = 200
 
+    # Crie a conta com as informações do teste
+    conta.abrir_conta(nome, nascimento, cpf, endereco, primeiro_deposito)
+    """
     while True:
         print("\n1 - Acessar Conta")
         print("2 - Efetuar Cadastro")
