@@ -33,7 +33,7 @@ class Conta_Banco:
         self.limite = 50000
         self.numero_saques = 0
         self.limite_saques = 5
-        self.digito_verificador = digito_verificador
+        self.digito_verificador = 7
         self.usuario = usuario
 
     def depositar(self, valor):
@@ -88,7 +88,7 @@ class Sistema_Banco:
         nome = input("Informe o nome completo: ")
         data_nascimento = input("Informe a data de nascimento (dd/mm/aaaa): ")
         endereco = input("Informe o endereço (Logradouro, Número - Bairro - Cidade/Sigla estado): ")
-        digito_verificador = string.ascii_uppercase.index(nome[0].upper()) + 1
+        digito_verificador = 7
         usuario = {
             "nome": nome,
             "data_nascimento": data_nascimento,
@@ -108,35 +108,11 @@ class Sistema_Banco:
         """, (digito_verificador, 0, "Não foram realizadas movimentações.\n", 50000, 0, 5, str(usuario)))
         conn.commit()
 
-    def filtrar_usuario(self, cpf):
+    def filtrar_usuario(self, numero_conta):
         # Busca o usuário no SQLite
         cursor.execute("""
         SELECT * FROM Conta_Banco WHERE usuario LIKE ?
-        """, ('%'+cpf+'%',))
-        usuarios_filtrados = cursor.fetchall()
-        if usuarios_filtrados:
-            # Converte a tupla em um dicionário
-            usuario_data = ast.literal_eval(usuarios_filtrados[0][6])  # Converte a string em um dicionário
-            conta = Conta_Banco(usuarios_filtrados[0][0], usuario_data)
-            usuario = {
-                "digito_verificador": usuarios_filtrados[0][0],
-                "saldo": usuarios_filtrados[0][1],
-                "extrato": usuarios_filtrados[0][2],
-                "limite": usuarios_filtrados[0][3],
-                "numero_saques": usuarios_filtrados[0][4],
-                "limite_saques": usuarios_filtrados[0][5],
-                "usuario": usuario_data,
-                "conta": conta
-            }
-            return usuario
-        else:
-            return None
-
-    def filtrar_usuario(self, cpf):
-        # Busca o usuário no SQLite
-        cursor.execute("""
-        SELECT * FROM Conta_Banco WHERE usuario LIKE ?
-        """, ('%'+cpf+'%',))
+        """, ('%'+str(numero_conta)+'%',))
         usuarios_filtrados = cursor.fetchall()
         if usuarios_filtrados:
             # Converte a tupla em um dicionário
@@ -157,8 +133,8 @@ class Sistema_Banco:
             return None
 
     def acessar_conta(self):
-        cpf = input("Informe o CPF do usuário: ")
-        usuario = self.filtrar_usuario(cpf)
+        cpf = input("Informe numero da conta sem o digito verificador: ")
+        usuario = self.filtrar_usuario(self.numero_conta)
 
         if usuario:
             print(f"Bem-vindo, {usuario['usuario']['nome']}!")
