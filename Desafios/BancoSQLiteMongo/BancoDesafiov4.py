@@ -33,7 +33,7 @@ class Conta_Banco:
         self.limite = 50000
         self.numero_saques = 0
         self.limite_saques = 5
-        self.digito_verificador = 7
+        self.digito_verificador = digito_verificador
         self.usuario = usuario
 
     def depositar(self, valor):
@@ -184,16 +184,7 @@ class Sistema_Banco:
 
 def menu_principal():
     sistema = Sistema_Banco()
-    """
-    nome = 'Clênio Borges Barboza Filho'
-    nascimento = '14/04/1995'
-    cpf = '090.449.264-89'
-    endereco = 'Rua Governador, 295, Franscisco, Garanhuns, Pernambuco, Brasil'
-    primeiro_deposito = 200
 
-    # Crie a conta com as informações do teste
-    conta.abrir_conta(nome, nascimento, cpf, endereco, primeiro_deposito)
-    """
     while True:
         print("\n1 - Acessar Conta")
         print("2 - Efetuar Cadastro")
